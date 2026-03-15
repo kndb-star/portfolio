@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>konark_debbarma_architect.sh</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&display=swap');
+
+        :root {
+            --bg: #080808;
+            --surface: #0d0d0d;
+            --surface-2: #111111;
+            --border: #1e1e1e;
+            --border-light: #2a2a2a;
+            --accent: #ffffff;
+            --text-dim: #555;
+            --text-mid: #888;
+            --text-main: #d4d4d4;
+            --hi: #60a5fa;
+            --sidebar-w: 260px;
+        }
+
+        :root.light {
+            --bg: #f5f5f4;
+            --surface: #ebebea;
+            --surface-2: #e2e2e0;
+            --border: #d4d4d0;
+            --border-light: #c0c0bc;
+            --accent: #111111;
+            --text-dim: #999;
+            --text-mid: #666;
+            --text-main: #333;
+            --hi: #2563eb;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+            background: var(--bg);
+            color: var(--text-main);
+            font-size: 12.5px;
+            line-height: 1.6;
+            overflow-x: hidden;
+            transition: background 0.25s, color 0.25s;
+        }
+
+        /* ── SCANLINE OVERLAY ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.03) 2px,
+                rgba(0,0,0,0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 999;
+            transition: opacity 0.25s;
+        }
+        html.light body::before { opacity: 0; pointer-events: none; }
+
+        /* ── LAYOUT ── */
+        .layout {
+            display: grid;
+            grid-template-columns: var(--sidebar-w) 1fr;
+            min-height: 100vh;
+            transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .layout.collapsed { grid-template-columns: 56px 1fr; }
+
+        /* ── SIDEBAR ── */
+        aside {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 10;
+            transition: background 0.25s, border-color 0.25s;
+        }
+
+        /* ── SIDEBAR TOP (theme toggle row) ── */
+        .sidebar-top {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: border-color 0.25s;
+            min-height: 44px;
+        }
+        .layout.collapsed .sidebar-top { justify-content: center; padding: 0.85rem 0; }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            background: var(--surface-2);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 2px 3px;
+            cursor: pointer;
+            gap: 2px;
+            transition: border-color 0.2s, background 0.25s;
+        }
+        .theme-toggle:hover { border-color: var(--hi); }
+
+        .t-icon {
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            transition: background 0.2s, color 0.2s;
+        }
+        .t-icon.active {
+            background: var(--border-light);
+            color: var(--accent);
+        }
+
+        /* nav */
+        nav { padding: 1.5rem 0; flex: 1; overflow-y: auto; }
+        nav::-webkit-scrollbar { width: 0; }
+        nav ul { list-style: none; }
+        nav li { position: relative; }
+
+        nav a {
+            display: flex;
+            align-items: center;
+            padding: 0.55rem 1rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: color 0.15s, background 0.15s;
+            white-space: nowrap;
+            border-left: 2px solid transparent;
+        }
+        .layout.collapsed nav a { justify-content: center; padding: 0.75rem 0; }
+        nav a:hover { color: var(--text-main); background: rgba(128,128,128,0.06); }
+        nav a.active { color: var(--accent); border-left-color: var(--hi); background: rgba(96,165,250,0.06); }
+        .layout.collapsed nav a.active { border-left-color: transparent; border-right: 2px solid var(--hi); }
+
+        .nav-label { font-size: 0.75rem; }
+        .layout.collapsed .nav-label { display: none; }
+
+        .nav-icon {
+            font-size: 0.8rem;
+            width: 18px;
+            text-align: center;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        .layout.collapsed .nav-icon { margin-right: 0; }
+
+        /* collapse toggle */
+        .sidebar-bottom {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            transition: border-color 0.25s;
+        }
+        .layout.collapsed .sidebar-bottom { justify-content: center; padding: 0.75rem 0; }
+
+        .toggle-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            transition: color 0.2s;
+        }
+        .toggle-btn:hover { color: var(--accent); }
+        .toggle-btn svg { width: 14px; height: 14px; fill: currentColor; transition: transform 0.3s ease; }
+        .layout.collapsed .toggle-btn svg { transform: rotate(180deg); }
+
+        /* ── MAIN ── */
+        main { padding: 3rem 6% 5rem; max-width: 900px; }
+
+        section {
+            margin-bottom: 5rem;
+            scroll-margin-top: 2.5rem;
+        }
+
+        /* section headers */
+        .sec-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .sec-label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+        .sec-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── HERO ── */
+        #about { padding-top: 1rem; }
+
+        .hero-eyebrow {
+            font-size: 0.7rem;
+            color: var(--hi);
+            opacity: 0.8;
+            letter-spacing: 0.2em;
+            margin-bottom: 1.2rem;
+        }
+        .hero-eyebrow::before { content: '> '; color: var(--text-dim); }
+
+        h1 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(2rem, 3.5vw, 2.8rem);
+            font-weight: 300;
+            color: var(--accent);
+            line-height: 1.2;
+            letter-spacing: -1px;
+            margin-bottom: 1.8rem;
+        }
+
+        .summary {
+            font-size: 0.9rem;
+            color: var(--text-mid);
+            max-width: 600px;
+            line-height: 1.8;
+            margin-bottom: 2.5rem;
+        }
+
+        /* status chips */
+        .status-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 2.5rem;
+        }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            font-size: 0.65rem;
+            color: var(--text-mid);
+            letter-spacing: 0.05em;
+            border-radius: 2px;
+        }
+        .chip .dot-s {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--hi);
+            animation: blink 2.5s ease infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        /* ── ABOUT TWO-COL LAYOUT ── */
+        .about-layout {
+            display: grid;
+            grid-template-columns: 1fr 220px;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* ── MENTOR CARD ── */
+        .mentor-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+            padding: 1.2rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border-light);
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+            transition: background 0.25s, border-color 0.25s;
+        }
+        .mentor-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 2px;
+            background: var(--hi);
+            opacity: 0.5;
+        }
+        .mentor-badge {
+            display: inline-block;
+            align-self: flex-start;
+            font-size: 0.55rem;
+            letter-spacing: 0.15em;
+            color: var(--hi);
+            border: 1px solid rgba(96,165,250,0.25);
+            padding: 1px 6px;
+            border-radius: 2px;
+        }
+        .mentor-card h4 { font-size: 0.85rem; color: var(--accent); font-weight: 500; }
+        .mentor-card p { font-size: 0.72rem; color: var(--text-dim); line-height: 1.6; }
+        .mentor-link {
+            align-self: flex-start;
+            font-size: 0.65rem;
+            color: var(--text-mid);
+            text-decoration: none;
+            border: 1px solid var(--border-light);
+            padding: 4px 10px;
+            letter-spacing: 0.1em;
+            transition: all 0.2s;
+            border-radius: 2px;
+            margin-top: 0.3rem;
+        }
+        .mentor-link:hover { color: var(--hi); border-color: rgba(96,165,250,0.4); background: rgba(96,165,250,0.05); }
+
+        /* ── SKILLS GRID ── */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+        }
+        .skill-cell {
+            background: var(--bg);
+            padding: 1.2rem 1.2rem 1.4rem;
+            transition: background 0.2s;
+        }
+        .skill-cell:hover { background: var(--surface-2); }
+        .skill-cat {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .skill-cat::before { content: '#'; color: var(--hi); opacity: 0.5; }
+        .skill-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+        .tag {
+            font-size: 0.65rem;
+            padding: 2px 7px;
+            background: rgba(128,128,128,0.05);
+            border: 1px solid var(--border-light);
+            color: var(--text-mid);
+            border-radius: 1px;
+        }
+
+        /* ── EXPERIENCE ── */
+        .timeline { position: relative; }
+        .exp-item {
+            position: relative;
+            padding-left: 2rem;
+            padding-bottom: 3.5rem;
+        }
+        .exp-item::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 8px; bottom: 0;
+            width: 1px;
+            background: var(--border);
+        }
+        .exp-item:last-child::before { display: none; }
+        .exp-item::after {
+            content: '';
+            position: absolute;
+            left: -3px; top: 6px;
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--border-light);
+            border: 1px solid var(--border);
+        }
+        .exp-item:first-child::after { background: var(--hi); border-color: var(--hi); box-shadow: 0 0 8px rgba(96,165,250,0.3); }
+
+        .exp-meta {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.3rem;
+            flex-wrap: wrap;
+        }
+        .exp-role { font-size: 0.9rem; color: var(--text-main); font-weight: 500; }
+        .exp-company { font-size: 0.75rem; color: var(--text-dim); }
+        .exp-company::before { content: '@ '; color: var(--border-light); }
+        .exp-date { font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.05em; white-space: nowrap; }
+        .exp-current {
+            display: inline-block;
+            font-size: 0.55rem;
+            color: var(--hi);
+            border: 1px solid rgba(96,165,250,0.3);
+            padding: 1px 6px;
+            margin-left: 8px;
+            border-radius: 2px;
+            letter-spacing: 0.1em;
+            vertical-align: middle;
+        }
+        .exp-bullets { list-style: none; margin-top: 0.8rem; }
+        .exp-bullets li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-mid);
+            line-height: 1.7;
+        }
+        .exp-bullets li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--border-light);
+            font-size: 0.7rem;
+        }
+        .kw, .kw-b, .kw-g { color: var(--hi); opacity: 0.9; }
+
+        /* ── CONTACT ── */
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+        }
+        .contact-cell { background: var(--bg); padding: 1.5rem; transition: background 0.25s; }
+        .contact-cell .c-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 0.6rem;
+        }
+        .contact-cell .c-label::before { content: '// '; color: var(--border-light); }
+        .contact-cell a, .contact-cell p { font-size: 0.85rem; color: var(--text-main); text-decoration: none; }
+        .contact-cell a:hover { color: var(--hi); }
+
+        /* footer */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+        }
+
+        :root.light body::before { display: none; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        section { animation: fadeUp 0.5s ease both; }
+        section:nth-child(1) { animation-delay: 0.05s; }
+        section:nth-child(2) { animation-delay: 0.15s; }
+        section:nth-child(3) { animation-delay: 0.25s; }
+        section:nth-child(4) { animation-delay: 0.35s; }
+
+        /* ── PDF DOWNLOAD BUTTON ── */
+        .pdf-btn {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin: 0 1rem 1rem;
+            padding: 0.5rem 0.75rem;
+            background: transparent;
+            border: 1px solid var(--border-light);
+            color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.2s;
+            white-space: nowrap;
+            width: calc(100% - 2rem);
+            justify-content: center;
+        }
+        .pdf-btn:hover { color: var(--hi); border-color: rgba(96,165,250,0.4); background: rgba(96,165,250,0.05); }
+        .pdf-btn svg { width: 11px; height: 11px; fill: currentColor; flex-shrink: 0; }
+        .layout.collapsed .pdf-btn span { display: none; }
+        .layout.collapsed .pdf-btn { width: 36px; height: 36px; margin: 0 auto 1rem; padding: 0; justify-content: center; border-radius: 2px; }
+
+        /* ── PRINT / PDF STYLES ── */
+        @media print {
+            aside, .pdf-btn { display: none !important; }
+            .layout { display: block; }
+            main { padding: 1.5rem 2rem; max-width: 100%; }
+            body { font-size: 11px; background: #fff; color: #111; }
+            section { margin-bottom: 2rem; page-break-inside: avoid; animation: none; }
+            :root {
+                --bg: #fff;
+                --surface: #f5f5f5;
+                --surface-2: #ebebeb;
+                --border: #ddd;
+                --border-light: #ccc;
+                --accent: #000;
+                --text-dim: #777;
+                --text-mid: #444;
+                --text-main: #222;
+                --hi: #1d4ed8;
+            }
+        }
+        @media (max-width: 780px) {
+            .layout { grid-template-columns: 1fr !important; }
+            aside { height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--border); }
+            nav ul { display: flex; flex-wrap: nowrap; overflow-x: auto; }
+            nav li { flex-shrink: 0; }
+            nav a { padding: 0.6rem 1rem; border-left: none; border-bottom: 2px solid transparent; }
+            nav a.active { border-bottom-color: var(--hi); border-left: none; }
+            main { padding: 2rem 1.2rem 4rem; }
+            .contact-grid { grid-template-columns: 1fr; }
+            .toggle-btn { display: none; }
+            .about-layout { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="layout" id="mainLayout">
+
+    <!-- ── SIDEBAR ── -->
+    <aside>
+
+        <div class="sidebar-top">
+            <div class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark">
+                <span class="t-icon active" id="iconNight">🌙</span>
+                <span class="t-icon" id="iconDay">☀️</span>
+            </div>
+        </div>
+
+        <nav>
+            <ul>
+                <li><a href="#about" class="active">
+                    <span class="nav-icon">◈</span>
+                    <span class="nav-label">about</span>
+                </a></li>
+                <li><a href="#skills">
+                    <span class="nav-icon">◉</span>
+                    <span class="nav-label">skills</span>
+                </a></li>
+                <li><a href="#experience">
+                    <span class="nav-icon">◎</span>
+                    <span class="nav-label">experience</span>
+                </a></li>
+                <li><a href="#contact">
+                    <span class="nav-icon">◌</span>
+                    <span class="nav-label">contact</span>
+                </a></li>
+            </ul>
+        </nav>
+
+        <button class="pdf-btn" onclick="downloadPDF()" title="Download as PDF">
+            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            <span>export.pdf</span>
+        </button>
+
+        <div class="sidebar-bottom">
+            <button class="toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar">
+                <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+            </button>
+        </div>
+
+    </aside>
+
+    <!-- ── MAIN ── -->
+    <main>
+
+        <!-- ABOUT -->
+        <section id="about">
+            <div class="sec-header">
+                <span class="sec-label">about</span>
+                <span class="sec-line"></span>
+            </div>
+
+            <div class="about-layout">
+                <div class="about-left">
+                    <div class="hero-eyebrow">SOFTWARE ARCHITECT · PUNE, INDIA</div>
+
+                    <h1>Konark Debbarma</h1>
+
+                    <p class="summary">
+                        Translating abstract concepts into concrete, scalable solutions.
+                        Advocate for radical simplicity, distributed systems, and building
+                        high-performance engineering cultures from zero.
+                    </p>
+
+                    <div class="status-chips">
+                        <span class="chip"><span class="dot-s"></span>Open to Advisory</span>
+                        <span class="chip">10+ yrs experience</span>
+                        <span class="chip">Azure · Distributed Systems</span>
+                        <span class="chip">Startup Mentor</span>
+                    </div>
+                </div>
+
+                <div class="mentor-card">
+                    <div class="mentor-badge">ADVISORY ROLE</div>
+                    <h4>Mentoring wiox.ai</h4>
+                    <p>Assisting in technical roadmap and architectural scaling for generative AI workflows.</p>
+                    <a href="https://wiox.ai" target="_blank" class="mentor-link">↗ VISIT</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- SKILLS -->
+        <section id="skills">
+            <div class="sec-header">
+                <span class="sec-label">skills</span>
+                <span class="sec-line"></span>
+            </div>
+
+            <div class="skills-grid">
+                <div class="skill-cell">
+                    <div class="skill-cat">Languages & Frameworks</div>
+                    <div class="skill-tags">
+                        <span class="tag">C#</span>
+                        <span class="tag">Python</span>
+                        <span class="tag">.NET Core API</span>
+                        <span class="tag">.NET Core MVC</span>
+                        <span class="tag">FastAPI</span>
+                    </div>
+                </div>
+                <div class="skill-cell">
+                    <div class="skill-cat">Data Storage</div>
+                    <div class="skill-tags">
+                        <span class="tag">SQL Server</span>
+                        <span class="tag">PostgreSQL</span>
+                        <span class="tag">CosmosDB</span>
+                        <span class="tag">Parquet</span>
+                    </div>
+                </div>
+                <div class="skill-cell">
+                    <div class="skill-cat">Data Platform</div>
+                    <div class="skill-tags">
+                        <span class="tag">Databricks</span>
+                        <span class="tag">Delta Lake</span>
+                        <span class="tag">Spark</span>
+                    </div>
+                </div>
+                <div class="skill-cell">
+                    <div class="skill-cat">Identity & Access</div>
+                    <div class="skill-tags">
+                        <span class="tag">IAM</span>
+                        <span class="tag">SSO</span>
+                        <span class="tag">OIDC</span>
+                        <span class="tag">SAML 2.0</span>
+                        <span class="tag">OAuth 2.0</span>
+                    </div>
+                </div>
+                <div class="skill-cell">
+                    <div class="skill-cat">Cloud</div>
+                    <div class="skill-tags">
+                        <span class="tag">Azure</span>
+                    </div>
+                </div>
+                <div class="skill-cell">
+                    <div class="skill-cat">DevOps & Orchestration</div>
+                    <div class="skill-tags">
+                        <span class="tag">Docker</span>
+                        <span class="tag">Kubernetes</span>
+                        <span class="tag">n8n</span>
+                        <span class="tag">Temporal</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- EXPERIENCE -->
+        <section id="experience">
+            <div class="sec-header">
+                <span class="sec-label">experience</span>
+                <span class="sec-line"></span>
+            </div>
+
+            <div class="timeline">
+
+                <div class="exp-item">
+                    <div class="exp-meta">
+                        <div>
+                            <span class="exp-role">Software Architect</span>
+                            <span class="exp-company">Energy Exemplar</span>
+                            <span class="exp-current">CURRENT</span>
+                        </div>
+                        <span class="exp-date">2024 — Present</span>
+                    </div>
+                    <ul class="exp-bullets">
+                        <li>Leading the development of a strategic <span class="kw">Data Platform</span> for cross-functional analytics and <span class="kw">AI/ML</span> enablement.</li>
+                        <li>Architecting integration of disparate data sources into a unified governance model.</li>
+                    </ul>
+                </div>
+
+                <div class="exp-item">
+                    <div class="exp-meta">
+                        <div>
+                            <span class="exp-role">Principal Software Engineer</span>
+                            <span class="exp-company">Energy Exemplar</span>
+                        </div>
+                        <span class="exp-date">2022 — 2024</span>
+                    </div>
+                    <ul class="exp-bullets">
+                        <li>Architected and designed the <span class="kw">Central License Manager</span> and <span class="kw">Marketplace</span> products.</li>
+                        <li>Built and mentored multiple engineering teams delivering enterprise-grade cloud products.</li>
+                    </ul>
+                </div>
+
+                <div class="exp-item">
+                    <div class="exp-meta">
+                        <div>
+                            <span class="exp-role">Senior Software Engineer</span>
+                            <span class="exp-company">Energy Exemplar</span>
+                        </div>
+                        <span class="exp-date">2019 — 2022</span>
+                    </div>
+                    <ul class="exp-bullets">
+                        <li>Architected Cloud <span class="kw">SSO features</span> using <span class="kw">IdentityServer4</span>.</li>
+                        <li>Developed a distributed hierarchical key-value store for global configuration.</li>
+                    </ul>
+                </div>
+
+                <div class="exp-item">
+                    <div class="exp-meta">
+                        <div>
+                            <span class="exp-role">Software Engineer II</span>
+                            <span class="exp-company">Ivanti</span>
+                        </div>
+                        <span class="exp-date">2017 — 2019</span>
+                    </div>
+                    <ul class="exp-bullets">
+                        <li>Built an <span class="kw">AI chatbot</span> for the UNO platform with an automated learning module.</li>
+                        <li>Handled high-priority escalations for flagship SaaS products (ISM).</li>
+                    </ul>
+                </div>
+
+                <div class="exp-item">
+                    <div class="exp-meta">
+                        <div>
+                            <span class="exp-role">Software Engineer</span>
+                            <span class="exp-company">Mu Sigma Inc.</span>
+                        </div>
+                        <span class="exp-date">2015 — 2017</span>
+                    </div>
+                    <ul class="exp-bullets">
+                        <li>Aggregated competitor pricing using VBA and later a custom <span class="kw">.NET automation crawler</span>.</li>
+                        <li>Streamlined large-scale data scraping for global tire manufacturers.</li>
+                    </ul>
+                </div>
+
+                <div class="exp-item" style="padding-bottom: 0;">
+                    <div class="exp-meta">
+                        <div>
+                            <span class="exp-role">Systems Engineer</span>
+                            <span class="exp-company">ITTI PVT LTD</span>
+                        </div>
+                        <span class="exp-date">2013 — 2015</span>
+                    </div>
+                    <ul class="exp-bullets">
+                        <li>Optimized complex <span class="kw">SQL reporting queries</span> (Joins/Indexes) for Ametek engineering teams.</li>
+                        <li>Built a POC packaging optimization tool for Unilever ETSC Business Continuity Planning.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- CONTACT -->
+        <section id="contact">
+            <div class="sec-header">
+                <span class="sec-label">contact</span>
+                <span class="sec-line"></span>
+            </div>
+
+            <div class="contact-grid">
+                <div class="contact-cell">
+                    <div class="c-label">location</div>
+                    <p>Pune, India</p>
+                </div>
+                <div class="contact-cell">
+                    <div class="c-label">phone</div>
+                    <a href="tel:+918147910806">+91 81479 10806</a>
+                </div>
+                <div class="contact-cell">
+                    <div class="c-label">email</div>
+                    <a href="mailto:konarkdebbarma@outlook.com">konarkdebbarma@outlook.com</a>
+                </div>
+                <div class="contact-cell">
+                    <div class="c-label">linkedin</div>
+                    <a href="https://linkedin.com/in/konarkd" target="_blank">linkedin.com/in/konarkd</a>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <span>konark_debbarma © 2026</span>
+        </footer>
+
+    </main>
+</div>
+
+<script>
+    function downloadPDF() {
+        const wasDark = !document.documentElement.classList.contains('light');
+        // Switch to light for clean print output
+        document.documentElement.classList.add('light');
+        setTimeout(() => {
+            window.print();
+            // Restore original theme after dialog closes
+            if (wasDark) document.documentElement.classList.remove('light');
+        }, 150);
+    }
+
+    function toggleSidebar() {
+        document.getElementById('mainLayout').classList.toggle('collapsed');
+    }
+
+    function toggleTheme() {
+        const isLight = document.documentElement.classList.toggle('light');
+        document.getElementById('iconNight').classList.toggle('active', !isLight);
+        document.getElementById('iconDay').classList.toggle('active', isLight);
+    }
+
+    // Active nav on scroll
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('nav a');
+
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                navLinks.forEach(a => {
+                    a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id);
+                });
+            }
+        });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+
+    sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
