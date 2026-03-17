@@ -187,6 +187,28 @@
         .toggle-btn svg { width: 14px; height: 14px; fill: currentColor; transition: transform 0.3s ease; }
         .layout.collapsed .toggle-btn svg { transform: rotate(180deg); }
 
+        /* Mobile nav */
+        .mobile-nav-toggle {
+            display: none;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 0.25rem 0.4rem;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            transition: background 0.2s;
+        }
+        .mobile-nav-toggle:hover { background: rgba(128,128,128,0.1); }
+
+        .nav-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 14;
+        }
+
         /* ── MAIN ── */
         main { padding: 3rem 6% 5rem; max-width: 900px; }
 
@@ -518,16 +540,71 @@
             }
         }
         @media (max-width: 780px) {
+            /* Stack sidebar + main content for narrower viewports */
             .layout { grid-template-columns: 1fr !important; }
             aside { height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--border); }
-            nav ul { display: flex; flex-wrap: nowrap; overflow-x: auto; }
-            nav li { flex-shrink: 0; }
-            nav a { padding: 0.6rem 1rem; border-left: none; border-bottom: 2px solid transparent; }
-            nav a.active { border-bottom-color: var(--hi); border-left: none; }
-            main { padding: 2rem 1.2rem 4rem; }
+
+            /* Show only top bar until hamburger opens the drawer */
+            aside > :not(.sidebar-top) { display: none; }
+            nav { display: none; }
+
+            /* Drawer open state */
+            .layout.nav-open aside {
+                position: fixed;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 15;
+                overflow: auto;
+                background: var(--surface);
+            }
+            .layout.nav-open aside > :not(.sidebar-top) { display: flex; flex-direction: column; }
+            .layout.nav-open nav { display: block; flex: 1; overflow-y: auto; }
+
+            /* Stack nav items vertically in the drawer */
+            .layout.nav-open nav ul { display: block; }
+            .layout.nav-open nav li { flex-shrink: unset; }
+            .layout.nav-open nav a { padding: 0.75rem 1.2rem; border-left: 2px solid transparent; border-bottom: none; font-size: 0.85rem; }
+            .layout.nav-open nav a.active { border-left-color: var(--hi); border-bottom: none; background: rgba(96,165,250,0.06); }
+
+            .mobile-nav-toggle { display: inline-flex; }
+
+            .nav-overlay { display: none; }
+            .layout.nav-open .nav-overlay { display: block; }
+
+            /* Push content down so the top bar stays visible */
+            main {
+                padding: 1.8rem 1rem 3.5rem;
+                max-width: 100%;
+            }
+
+            /* Improve readability on small screens */
+            body { font-size: 14px; }
+            .summary { max-width: 100%; }
+            .status-chips { justify-content: flex-start; }
+            .skills-grid { gap: 0.5rem; }
+            .skill-cell { padding: 0.9rem; }
+            .exp-item { padding-left: 1.2rem; }
+
             .contact-grid { grid-template-columns: 1fr; }
             .toggle-btn { display: none; }
             .about-layout { grid-template-columns: 1fr; }
+
+            /* Export button at bottom of drawer */
+            .layout.nav-open .pdf-btn {
+                margin: 0 1rem 0.5rem;
+                width: calc(100% - 2rem);
+            }
+            .layout.nav-open .sidebar-bottom {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-eyebrow { font-size: 0.65rem; }
+            h1 { font-size: clamp(1.8rem, 7vw, 2.4rem); }
+            .sec-header { gap: 0.5rem; margin-bottom: 1.5rem; }
+            .sec-label { font-size: 0.6rem; }
         }
     </style>
 </head>
@@ -543,6 +620,9 @@
                 <span class="t-icon active" id="iconNight">🌙</span>
                 <span class="t-icon" id="iconDay">☀️</span>
             </div>
+            <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Toggle navigation">
+                ☰
+            </button>
         </div>
 
         <nav>
@@ -579,6 +659,8 @@
 
     </aside>
 
+    <div class="nav-overlay" onclick="toggleMobileNav()" aria-hidden="true"></div>
+
     <!-- ── MAIN ── -->
     <main>
 
@@ -602,7 +684,6 @@
                     </p>
 
                     <div class="status-chips">
-                        <span class="chip"><span class="dot-s"></span>Open to Advisory</span>
                         <span class="chip">10+ yrs experience</span>
                         <span class="chip">Azure · Distributed Systems</span>
                         <span class="chip">Startup Mentor</span>
@@ -834,9 +915,21 @@
         document.getElementById('iconDay').classList.toggle('active', isLight);
     }
 
+    function toggleMobileNav() {
+        document.getElementById('mainLayout').classList.toggle('nav-open');
+    }
+
     // Active nav on scroll
     const sections = document.querySelectorAll('section[id]');
     const navLinks = document.querySelectorAll('nav a');
+
+    navLinks.forEach(a => {
+        a.addEventListener('click', () => {
+            if (document.getElementById('mainLayout').classList.contains('nav-open')) {
+                toggleMobileNav();
+            }
+        });
+    });
 
     const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
