@@ -355,36 +355,61 @@
         .skills-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1px;
-            background: var(--border);
-            border: 1px solid var(--border);
+            gap: 0.7rem;
+            padding: 0.7rem;
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+            position: relative;
+            overflow: hidden;
+        }
+        html.light .skills-grid { box-shadow: 0 8px 20px rgba(15,23,42,0.08); }
+        .skills-grid::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(96,165,250,0.55), transparent);
         }
         .skill-cell {
-            background: var(--bg);
-            padding: 1.2rem 1.2rem 1.4rem;
-            transition: background 0.2s;
+            background: var(--surface-2);
+            border: 1px solid var(--border-light);
+            border-radius: 4px;
+            padding: 1.1rem 1rem 1.2rem;
+            min-height: 126px;
+            transition: transform 0.2s, border-color 0.2s, background 0.2s;
         }
-        .skill-cell:hover { background: var(--surface-2); }
+        .skill-cell:hover {
+            transform: translateY(-2px);
+            border-color: rgba(96,165,250,0.4);
+            background: rgba(96,165,250,0.08);
+        }
         .skill-cat {
             font-size: 0.6rem;
-            color: var(--text-dim);
+            color: var(--text-mid);
             letter-spacing: 0.15em;
             text-transform: uppercase;
             margin-bottom: 0.8rem;
             display: flex;
             align-items: center;
             gap: 6px;
+            font-weight: 600;
         }
-        .skill-cat::before { content: '#'; color: var(--hi); opacity: 0.5; }
+        .skill-cat::before { content: '//'; color: var(--hi); opacity: 0.75; }
         .skill-tags { display: flex; flex-wrap: wrap; gap: 5px; }
         .tag {
             font-size: 0.65rem;
-            padding: 2px 7px;
-            background: rgba(128,128,128,0.05);
-            border: 1px solid var(--border-light);
-            color: var(--text-mid);
-            border-radius: 1px;
+            padding: 3px 8px;
+            background: rgba(96,165,250,0.12);
+            border: 1px solid rgba(96,165,250,0.28);
+            color: var(--accent);
+            border-radius: 2px;
+            transition: border-color 0.2s, background 0.2s;
         }
+        .skill-cell:hover .tag { border-color: rgba(96,165,250,0.48); }
 
         /* ── EXPERIENCE ── */
         .timeline { position: relative; }
@@ -582,8 +607,8 @@
             body { font-size: 14px; }
             .summary { max-width: 100%; }
             .status-chips { justify-content: flex-start; }
-            .skills-grid { gap: 0.5rem; }
-            .skill-cell { padding: 0.9rem; }
+            .skills-grid { gap: 0.55rem; padding: 0.55rem; }
+            .skill-cell { padding: 0.9rem; min-height: auto; }
             .exp-item { padding-left: 1.2rem; }
 
             .contact-grid { grid-template-columns: 1fr; }
@@ -809,7 +834,7 @@
                         <span class="exp-date">2019 — 2022</span>
                     </div>
                     <ul class="exp-bullets">
-                        <li>Architected Cloud <span class="kw">SSO features</span> using <span class="kw">IdentityServer4</span>.</li>
+                        <li>Architected Cloud <span class="kw">SSO features</span> using <span class="kw">IdentityServer4</span>, now <span class="kw">Duende IdentityServer</span>.</li>
                         <li>Developed a distributed hierarchical key-value store for global configuration.</li>
                     </ul>
                 </div>
